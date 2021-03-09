@@ -1,0 +1,621 @@
+---
+title: "Irish Hospital Outpatient waiting lists"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(ckanr)
+library(tidyverse)
+library(jsonlite)
+library(zoo)
+library(plotly)
+
+
+library(shiny)
+library(DT)
+
+
+# set default server
+Sys.setenv(CKANR_DEFAULT_URL="https://data.gov.ie")
+get_default_url()
+# find OP waiting list package
+OP_package <-(package_search(q="op-waiting-list-by-group-hospital" , as="json")) %>% fromJSON(flatten=TRUE)
+# urls for .csv files
+OP_resources <- OP_package$result$results$resources[1]
+# save urls for .csv files
+WL_2014 <- OP_resources[[1]]$url[7]
+WL_2015 <- OP_resources[[1]]$url[6]
+WL_2016 <- OP_resources[[1]]$url[5]
+WL_2017 <- OP_resources[[1]]$url[4]
+WL_2018 <- OP_resources[[1]]$url[3]
+
+WL_2019 <- OP_resources[[1]]$url[2]
+WL_2020 <- OP_resources[[1]]$url[1]
+WL_2021 <- OP_resources[[1]]$url[8]
+# download files ###############
+
+#download.file(WL_2014, "Downloaded_Files/WL_2014.csv")
+#download.file(WL_2015, "Downloaded_Files/WL_2015.csv")
+#download.file(WL_2016, "Downloaded_Files/WL_2016.csv")
+#download.file(WL_2017, "Downloaded_Files/WL_2017.csv")
+#download.file(WL_2018, "Downloaded_Files/WL_2018.csv")
+#download.file(WL_2019, "Downloaded_Files/WL_2019.csv")
+#download.file(WL_2020, "Downloaded_Files/WL_2020.csv")
+#download.file(WL_2021, "Downloaded_Files/WL_2021.csv")
+
+# create df for each year
+df_2014 <- read_csv("Downloaded_Files/WL_2014.csv")
+df_2015 <- read_csv("Downloaded_Files/WL_2015.csv")
+df_2016 <- read_csv("Downloaded_Files/WL_2016.csv")
+df_2017 <- read_csv("Downloaded_Files/WL_2017.csv")
+df_2018 <- read_csv("Downloaded_Files/WL_2018.csv")
+
+df_2019 <- read_csv("Downloaded_Files/WL_2019.csv")
+df_2020 <- read_csv("Downloaded_Files/WL_2020.csv")
+df_2021 <- read_csv("Downloaded_Files/WL_2021.csv")
+
+df_2019 <- df_2019[complete.cases(df_2019),]
+df_2020 <- df_2020[complete.cases(df_2020),]
+
+#df_2019$Wait_Band'18 Months +' <- '18+ Months'
+
+df_2019$Time_Bands <- replace(df_2019$Time_Bands, df_2019$Time_Bands == "18 Months +", "18+ Months")
+df_2020$Time_Bands <- replace(df_2020$Time_Bands, df_2020$Time_Bands == "18 Months +", "18+ Months")
+df_2021$Time_Bands <- replace(df_2021$Time_Bands, df_2021$Time_Bands == "18 Months +", "18+ Months")
+
+
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Tallaght University Hospital", "Tallaght Hospital")
+#df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "National Orthopaedic Hospital Cappagh", "Cappagh National Orthopaedic Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "St. Michael's Hospital", "St. Michael's Hospital Dun Laoghaire")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Connolly Hospital Blanchardstown", "Connolly Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Galway University Hospitals", "Galway University Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Letterkenny University Hospital", "Letterkenny General Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Sligo University Hospital", "Sligo Regional Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Mayo University Hospital", "Mayo General Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Roscommon University Hospital", "Roscommon Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "Portiuncula University Hospital", "Portiuncula Hospital")
+df_2019$Hospital <- replace(df_2019$Hospital, df_2019$Hospital == "University Hospital Kerry", "Kerry General Hospital")
+
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Tallaght University Hospital", "Tallaght Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "National Orthopaedic Hospital Cappagh", "Cappagh National Orthopaedic Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "St. Michael's Hospital", "St. Michael's Hospital Dun Laoghaire")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Connolly Hospital Blanchardstown", "Connolly Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Galway University Hospitals", "Galway University Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Letterkenny University Hospital", "Letterkenny General Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Sligo University Hospital", "Sligo Regional Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Mayo University Hospital", "Mayo General Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Roscommon University Hospital", "Roscommon Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "Portiuncula University Hospital", "Portiuncula Hospital")
+df_2020$Hospital <- replace(df_2020$Hospital, df_2020$Hospital == "University Hospital Kerry", "Kerry General Hospital")
+
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Tallaght University Hospital", "Tallaght Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "National Orthopaedic Hospital Cappagh", "Cappagh National Orthopaedic Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "St. Michael's Hospital", "St. Michael's Hospital Dun Laoghaire")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Connolly Hospital Blanchardstown", "Connolly Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Galway University Hospitals", "Galway University Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Letterkenny University Hospital", "Letterkenny General Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Sligo University Hospital", "Sligo Regional Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Mayo University Hospital", "Mayo General Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Roscommon University Hospital", "Roscommon Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "Portiuncula University Hospital", "Portiuncula Hospital")
+df_2021$Hospital <- replace(df_2021$Hospital, df_2021$Hospital == "University Hospital Kerry", "Kerry General Hospital")
+
+
+
+
+
+
+
+
+
+# change 2018 file date format to match the rest
+df_2018$"Archive Date" <- dmy(df_2018$"Archive Date")
+
+df_2019$"Archive_Date" <- dmy(df_2019$"Archive_Date")
+df_2020$"Archive_Date" <- dmy(df_2020$"Archive_Date")
+df_2021$"Archive_Date" <- dmy(df_2021$"Archive_Date")
+
+# uniform col names
+NewColumns <- c('Date','Hospital_Group', 'Hospital_HIPE','Hospital', 'Specialty_HIPE','Specialty', 'Adult_Or_Child','Age_Profile', 'Wait_Band', 'Total')
+# apply uniform col names
+colnames(df_2014) <- NewColumns
+colnames(df_2015) <- NewColumns
+colnames(df_2016) <- NewColumns
+colnames(df_2017) <- NewColumns
+colnames(df_2018) <- NewColumns
+
+colnames(df_2019) <- NewColumns
+colnames(df_2020) <- NewColumns
+colnames(df_2021) <- NewColumns
+
+
+# combine dataframes
+final_df <- rbind(df_2014,df_2015,df_2016,df_2017,df_2018,df_2019,df_2020,df_2021)
+# drop HIPE code columns
+final_df <- select(final_df,-Hospital_HIPE, -Specialty_HIPE)
+# fix adult/child
+final_df$Adult_Or_Child<-ifelse(final_df$Age_Profile=="16-64" | final_df$Age_Profile=="65+","Adult","Child")
+# create seperate ymd colmns
+final_df = final_df %>%
+  mutate(Date = ymd(Date)) %>%
+  mutate_at(vars(Date), funs(year, month, day))
+# remove ~500 rows missing Adult/Child and Age profile
+final_df <- final_df[complete.cases(final_df), ]
+# add ordered factor levels to Wait Band
+final_df$Wait_Band <- as.factor(final_df$Wait_Band)
+final_df$Wait_Band <- ordered(final_df$Wait_Band, levels = c("0-3 Months", "3-6 Months", "6-9 Months", "9-12 Months", "12-15 Months", "15-18 Months", "18+ Months"))
+# add ordered factor levels to Age Profile
+final_df$Age_Profile <- as.factor(final_df$Age_Profile)
+final_df$Age_Profile <- ordered(final_df$Age_Profile, levels = c("0-15", "16-64", "65+"))
+final_df$Adult_Or_Child <- as.factor(final_df$Adult_Or_Child)
+final_df$Adult_Or_Child <- ordered(final_df$Adult_Or_Child, levels = c("Child", "Adult"))
+# delete dataframes
+
+#remove(df_2014,df_2015,df_2016,df_2017,df_2018)
+
+
+
+# add year month date column
+final_df$Date_ym <- as.yearmon(paste(final_df$year, final_df$month), "%Y %m")
+# overall summary
+summary <- final_df %>% group_by(year,Hospital_Group,Hospital,Specialty,Adult_Or_Child,Age_Profile,Wait_Band) %>%
+  summarise(Total=sum(Total))
+# spreading the data to wide form from long form
+summary_table <- summary %>% spread(year, Total, 2014:2021, fill = NA)
+# writing the summary table to a csv file in the summary tables folder
+write.csv(summary_table, "Summary_Tables/summary_table.csv")
+# hospital summary - average patients
+summary2 <- final_df %>% group_by(Hospital,year) %>%
+  summarise(Total = round(mean(Total), 2))
+hospital_summary <- summary2 %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(hospital_summary, "Summary_Tables/hospital_summary.csv")
+# age profile summary
+age_profile_summary <- final_df %>% group_by(year,Age_Profile) %>%
+  summarise(Total=round(mean(Total), 2)) %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(age_profile_summary, "Summary_Tables/age_profile_summary.csv")
+# wait band summary
+wait_band_summary <- final_df %>% group_by(year, Wait_Band) %>%
+  summarise(Total = round(mean(Total), 2)) %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(wait_band_summary,"Summary_Tables/wait_band_summary.csv")
+# hospital group summary
+summary9 <- final_df %>% group_by(year, Hospital_Group) %>%
+  summarise(Total = round(mean(Total), 2))
+hospital_group_summary <- summary9 %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(hospital_group_summary,"Summary_Tables/hospital_group_summary.csv")
+# speciality summary
+summary3 <- final_df %>% group_by(year,Specialty) %>%
+  summarise(Total=round(mean(Total), 2))
+speciality_summary <- summary3 %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(speciality_summary,"Summary_Tables/speciality_summary.csv")
+# adult/child plus hospital
+adult_child_hospital_summary <- final_df %>% group_by(year, Hospital, Adult_Or_Child) %>%
+  summarise(Total = round(mean(Total), 2)) %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(adult_child_hospital_summary,"Summary_Tables/adult_child_hospital_summary.csv")
+# adult/child plus wait band
+adult_child_wait_band_summary <- final_df %>% group_by(year, Adult_Or_Child, Wait_Band) %>%
+  summarise(Total=round(mean(Total), 2)) %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(adult_child_wait_band_summary,"Summary_Tables/adult_child_wait_band_summary.csv")
+# hospital plus wait band
+hospital_wait_band_summary <- final_df %>% group_by(year, Hospital, Wait_Band) %>%
+  summarise(Total=round(mean(Total), 2)) %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(hospital_wait_band_summary,"Summary_Tables/hospital_wait_band_summary.csv")
+# speciality plus wait band
+speciality_wait_band_summary <- final_df %>% group_by(year, Specialty, Wait_Band) %>%
+  summarise(Total=round(mean(Total), 2)) %>% spread(year, Total, 2014:2021, fill = NA)
+write.csv(speciality_wait_band_summary,"Summary_Tables/speciality_wait_band_summary.csv")
+theme_set(theme_classic())
+adult_child_summary <- final_df %>% group_by(year,Adult_Or_Child) %>%
+  summarise(Total=mean(Total))
+
+
+g1 <- ggplot(adult_child_summary, (aes(x= year, y=Total, fill=Adult_Or_Child))) +
+  geom_bar(position=position_dodge(0.8), width =0.76,stat="identity", alpha=0.85) +
+scale_fill_manual(values = c("#fc8d62","#66c2a5" ), name = NULL) +
+  scale_y_continuous(name = "Average Number of Waiting Patients",
+                     breaks = seq(0,80, by=10)) +
+  xlab("Year") +
+  theme(
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_blank(),
+    axis.text.y = element_text(hjust = 2.5),
+    axis.title.y = element_text(vjust = -2),
+    axis.ticks.x = element_blank(),
+    axis.text.x = element_text(vjust = 8),
+    axis.title.x = element_text(vjust = 4),
+    panel.background = element_blank(),
+    panel.grid.major.y = element_line(size = 0.4, linetype = 'solid', colour = "white"),
+    panel.ontop = TRUE,
+    legend.position= c(0.15, 0.95), legend.direction="horizontal")
+
+#
+
+
+summary_stacked<- final_df %>% group_by(Wait_Band, year ) %>%
+  summarise(Total=mean(Total))
+
+
+g2 <- ggplot(data =summary_stacked, aes(Wait_Band, Total, color = as.factor(year), fill = as.factor(year), group = year))+
+  geom_bar(position=position_dodge(0.8), width =0.65,stat="identity") +
+  scale_y_continuous(name = "Average Number of Waiting Patients",
+                     breaks = seq(0,200, by=20)) +
+  ggtitle(" Average Wait Band 2014-2021") +
+  scale_color_manual(values = c("#0072b2", "#D55E00", "#009e73", "#E69F00","#999999", "#CC79A7", "#F0E442", "red"),
+                     name = NULL) +
+  scale_fill_manual(values = c("#0072b2", "#D55E00", "#009e73", "#E69F00","#999999", "#CC79A7", "#F0E442","red"),
+                    name = NULL) +
+  theme_classic() +
+  theme(legend.title.align = 0.5,
+        legend.position = c(0.75, 1),
+        legend.just = c(0, 1),
+        plot.title = element_text(size=12, face="bold", vjust = -5),
+        legend.text = element_text(size=8),
+        legend.title = element_blank(),
+        legend.key.size = unit(0.8,"line"),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(vjust = 7, size = 7),
+        axis.line.x = element_blank(),
+        axis.line.y = element_blank(),
+        axis.text.y = element_text(hjust = 1.7),
+        axis.title.y = element_text(vjust = -3),
+        axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.grid.major.y = element_line(size = 0.2, colour = "white"),
+        panel.ontop = TRUE,
+        plot.margin = margin(1, 7, 3, 1.5))
+
+
+
+hospital_month_summary <- final_df %>% group_by(Hospital, Hospital_Group, Date_ym) %>%
+  summarise(Total = mean(Total))
+
+g3 <- ggplot(hospital_month_summary, aes(x = Date_ym, y = reorder(Hospital, Total), fill = Total)) +
+  geom_tile(colour = "white") +
+  scale_fill_viridis_c(option = "B", begin = 0.1, end = 0.9, direction = -1,
+                       name = "avg",
+                       guide = guide_colourbar(direction = "horizontal", barwidth = 8, barheight = 0.8)) +
+  scale_x_continuous(name = NULL, expand = c(0,.1), breaks = seq(2014,2021, by=1)) +
+  facet_grid(Hospital_Group ~ ., scales = "free", space = "free") +
+  ggtitle(" Average Number of Patients Waiting per Hospital 2014-2021") +
+  theme(strip.text.y = element_text(angle = 0, size =5),
+        axis.text.y = element_text(size=4),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_line(size=0.3, colour = "darkgrey"),
+        axis.line.x = element_line(size=0.3, colour = "darkgrey"),
+        axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
+        panel.background = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0.5, 0.5, 1.5, 0.5), "cm"),
+        plot.title = element_text(size=8, face="bold"),
+        legend.text = element_text(size = 8),
+        legend.direction='horizontal',
+        legend.position = c(0.49, -0.15), # move to the bottom
+        legend.title = element_blank(),
+        legend.key.size = unit(0.8, "cm"),
+        legend.spacing.x = unit(0.2, 'cm'),
+        legend.background = element_rect(
+          fill = "white",
+          size = 0.4,
+          colour = "white"
+        )
+  )
+
+#plot across hospital group
+hospital_group_month <- final_df %>% group_by(Hospital_Group, Date_ym) %>%
+  summarise(Total = mean(Total))
+g4 <- ggplot(hospital_group_month, aes(x = Date_ym, y = Total, colour = Hospital_Group)) +
+geom_smooth(
+  data = hospital_group_month,
+  aes(x = Date_ym, y = Total, color = Hospital_Group),
+  method = "loess",
+  span = 0.5,
+  size = 0.9,
+  na.rm = TRUE,
+  se = FALSE,
+  inherit.aes = FALSE
+) +
+  ylab("Average Number of Patients Waiting") +
+  scale_y_continuous(limits = c(30, 150), breaks = seq(30, 150, by =10), expand = c(0,0)) +
+  scale_x_yearmon(name = "Year", expand = c(0,0)) +
+  scale_color_manual(values = c("#0072b2", "#D55E00", "#009e73", "#E69F00","#999999", "#CC79A7", "#F0E442",'red'),
+                     name = NULL) +
+  scale_fill_manual(values = c("#0072b2", "#D55E00", "#009e73", "#E69F00","#999999", "#CC79A7", "#F0E442",'red'),
+                    name = NULL) +
+  theme_classic() +
+  theme (
+    axis.ticks = element_blank(),
+    legend.key.size = unit(0.6, "line"),
+    legend.text = element_text(size = 7),
+    legend.direction = "horizontal",
+    legend.position = c(0.5,-0.15),
+    legend.title = element_blank(),
+    plot.margin = margin(5, 15, 30, 10),
+    panel.grid.major.x = element_line(size = 0.3, linetype = 'solid',colour = "lightgrey"),
+    panel.grid.major.y = element_line(size = 0.3, linetype = 'solid',colour = "lightgrey"),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.line.y = element_blank(),
+    axis.line.x = element_line(colour = "lightgrey"),
+    axis.title.y = element_text(vjust = 3)
+  )
+
+#
+
+g5 <- ggplot(summary3, aes(x =reorder(Specialty,-Total), y =Total, fill = Total)) + geom_col() +
+  facet_grid(year ~ ., scales = "free", space = "free") +
+  ggtitle(" Average Waiting List per Specialty 2014-2021") +
+  theme(strip.text.y = element_text(angle = 0, size =4),
+        axis.text.x = element_text(size=3, angle =45, hjust=1),
+        panel.grid.major.y = element_line(size=0.04, linetype = 'solid', colour = 'white' ),
+        panel.ontop = TRUE,
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size=4),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_line(size=0.3, colour = "darkgrey"),
+        axis.line.x = element_line(size=0.3, colour = "darkgrey"),
+        axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
+        panel.background = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0.5, 0.5, 2, 0.5), "cm"),
+        plot.title = element_text(size=8, face="bold"),
+        legend.position = "none"
+  )
+
+# ggplotly(g4)
+# ggplotly(g3)
+# ggplotly(g2)
+# ggplotly(g1)
+# ggplotly(g5)
+
+
+# final_sum <- final_df %>% group_by(year, Wait_Band) %>% summarise(sum(Total))
+final_sum_ym <- final_df %>% group_by(Date_ym) %>% summarise(Total=sum(Total))
+# 
+# 
+# 
+# 
+# 
+# fi2 <- final_df %>%
+#   select('Hospital_Group','Hospital','Wait_Band','Date_ym','Total') %>%
+#   filter(Date_ym=='Dec 2017') %>%
+#   group_by(Hospital_Group, Hospital, Wait_Band) %>%
+#   summarise(Total= sum(Total))
+# 
+# 
+# fi2_w <- fi2 %>%
+#   pivot_wider(names_from = Wait_Band,values_from =Total)
+# 
+# 
+# fi2_w_t <- fi2_w %>%                        # Compute row sums
+#   replace(is.na(.), 0) %>%
+#   mutate(Grand_Total = rowSums(across(where(is.numeric))))
+
+
+g6 <- ggplotly(ggplot(final_sum_ym, aes(x=Date_ym, y=Total)) +
+  geom_line() +
+  scale_y_continuous(limits = c(0, 650000), breaks = seq(0, 650000, by =100000), expand = c(0,0),labels = scales::comma) +
+  scale_x_yearmon()  +
+  theme_minimal() +theme(axis.text.y = element_text(size=8)) +
+  labs(title="Outpatient Waiting List Totals 2014 - Jan 2021", x=' ',y=' '))
+  
+
+df_spec <- final_df %>%
+    select('Wait_Band', 'Specialty','Total','Date_ym') %>%
+    filter(Date_ym == 'Jan 2021') %>%
+    group_by(Specialty,Wait_Band) %>%
+    summarise(Total=sum(Total)) 
+
+df_spec2 <- final_df %>%
+  select('Wait_Band', 'Specialty','Total','Date_ym') %>%
+  filter(Date_ym == 'Jan 2021') %>%
+  group_by(Specialty) %>%
+  summarise(SpecTotal=sum(sum(Total))) 
+
+df_spec3 <- left_join(df_spec,df_spec2, by='Specialty' )
+
+
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+top10 <- c('Orthopaedics',
+'Otolaryngology (ENT)',
+'Ophthalmology',
+'Dermatology',
+'General Surgery',
+'Urology',
+'Gynaecology',
+'Cardiology',
+'Neurology',
+'General Medicine')
+
+g7 <-
+ggplotly(
+ggplot(df_spec3, aes(x=reorder(Specialty,-SpecTotal), y=Total, fill=Wait_Band)) + geom_bar(position="stack", stat="identity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, size=8),
+        panel.grid.major.y = element_line(size = 0.5, linetype = 'dashed',colour = "grey"),
+        panel.ontop = TRUE,panel.grid = element_blank()) +
+  scale_fill_manual(values = cbp1) +
+  scale_x_discrete(limits = top10) +
+  labs(title="Outpatient by Speciality(Top 10)", x='', y='', fill='Wait Band') 
+)
+
+
+
+
+# final_df %>%
+#   select('Hospital_Group','Hospital','Wait_Band','Date_ym','Total') %>%
+#   filter(Date_ym==input$Date_ym1) %>%
+#   group_by(Hospital_Group, Hospital, Wait_Band) %>%
+#   summarise(Total= sum(Total)) %>%
+#   pivot_wider(names_from = Wait_Band,values_from =Total) %>%
+#   replace(is.na(.), 0) %>%
+#   mutate(Grand_Total = rowSums(across(where(is.numeric)))) 
+
+
+
+final_df_ph <- final_df %>%
+  select('Hospital_Group','Hospital','Date_ym','Total') %>%
+  filter(Date_ym=='Feb 2014') %>%
+  group_by(Hospital_Group, Hospital, Date_ym) %>%
+  summarise(Total_pt = sum(Total))
+
+
+g8 <- ggplot(final_df_ph, aes(x=Total_pt, y=Hospital)) + geom_bar(stat='identity') +
+  facet_grid(Hospital_Group ~ ., scales = "free", space = "free") +
+  ggtitle(" Outpatient Waiting List by Hospital January 2021") +
+  scale_x_continuous(limits = c(0, 28000), breaks = seq(0, 30000, by =5000), expand = c(0,0)) +
+  theme(strip.text.y = element_text(angle = 0, size =5),
+        axis.text.y = element_text(size=4),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_line(size=0.3, colour = "darkgrey"),
+        axis.line.x = element_line(size=0.3, colour = "darkgrey"),
+        axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
+        panel.grid.major.x = element_line(size = 0.3, linetype = 'solid',colour = "lightgrey"),
+        
+        panel.background = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(c(0.5, 0.5, 1.5, 0.5), "cm"),
+        plot.title = element_text(size=8, face="bold"),
+        legend.text = element_text(size = 8),
+        legend.direction='horizontal',
+        legend.position = c(0.49, -0.15), # move to the bottom
+        legend.title = element_blank(),
+        legend.key.size = unit(0.8, "cm"),
+        legend.spacing.x = unit(0.2, 'cm'),
+        legend.background = element_rect(
+          fill = "white",
+          size = 0.4,
+          colour = "white"
+        )
+  )
+
+
+
+
+
+
+
+final_df_1yr <- final_df %>%
+  select('Date_ym', 'Wait_Band', 'Total') %>%
+  filter(Wait_Band %in% c('12-15 Months', '15-18 Months', '18+ Months')) %>%
+  group_by(Date_ym) %>%
+  summarise(Total_y1 = sum(Total))
+
+final_df_1yr_2 <- final_df_1yr[c(1,13,25,37,49,61,73,85),]
+
+g9 <-
+ggplotly(
+ggplot(final_df_1yr_2, aes(y=Total_y1,x=Date_ym)) + geom_bar(stat='identity') +
+  scale_y_continuous(limits = c(0, 300000), breaks = seq(0, 300000, by =50000), expand = c(0,0),labels = scales::comma) +
+labs(title="Outpatient Waiting List > 1 year ", x=' ',y=' ')
+)
+
+```
+
+
+Page 1
+===================================== 
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+g8
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+g9
+```
+
+### Chart C
+
+```{r}
+g6
+```
+
+Page 2
+===================================== 
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart D
+
+```{r}
+g3
+```
+
+Page 3
+===================================== 
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+
+### Chart E
+
+```{r}
+g5
+```
+
+
+
+Page 4
+===================================== 
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart F
+
+
+```{r}
+g2
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart G
+
+
+```{r}
+g1
+```
+
+
+### Chart H
+
+
+```{r}
+g7
+```
+
+
