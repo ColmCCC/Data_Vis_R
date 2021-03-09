@@ -1,5 +1,5 @@
 ---
-title: "Irish Hospital Outpatient waiting lists"
+title: "Irish Hospital Outpatient waiting list"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
